@@ -65,10 +65,11 @@ async def api_play(request):
     body = await request.json()
     video_id = body.get("video_id", "")
     artist   = body.get("artist", "")
+    title    = body.get("title", "")
     if not video_id:
         return web.json_response({"error": "missing video_id"}, status=400)
     try:
-        item = await downloader.download(video_id, artist)
+        item = await downloader.download(video_id, artist, title)
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
     queue_manager.add(item)
@@ -478,25 +479,25 @@ function renderResults(results){
       </div>
       <div class="r-dur">${s.duration}</div>
       <div class="r-acts">
-        <button class="btn-sm play" onclick="playNow('${s.video_id}','${esc(s.artist)}',this)">▶ 播放</button>
-        <button class="btn-sm" onclick="addQueue('${s.video_id}','${esc(s.artist)}',this)">+ 队列</button>
+        <button class="btn-sm play" onclick="playNow('${s.video_id}','${esc(s.artist)}','${esc(s.title)}',this)">▶ 播放</button>
+        <button class="btn-sm" onclick="addQueue('${s.video_id}','${esc(s.artist)}','${esc(s.title)}',this)">+ 队列</button>
       </div>
     </div>`).join('');
 }
 
-async function playNow(vid,artist,btn){
+async function playNow(vid,artist,title,btn){
   const orig = btn.textContent; btn.textContent='…';
   try{
-    const d = await api('POST','/api/play',{video_id:vid,artist});
+    const d = await api('POST','/api/play',{video_id:vid,artist,title});
     if(d.ok){ toast('▶ '+d.title); pollState(); } else toast(d.error||'失败','err');
   } catch(e){}
   btn.textContent = orig;
 }
 
-async function addQueue(vid,artist,btn){
+async function addQueue(vid,artist,title,btn){
   const orig = btn.textContent; btn.textContent='…';
   try{
-    const d = await api('POST','/api/play',{video_id:vid,artist});
+    const d = await api('POST','/api/play',{video_id:vid,artist,title});
     if(d.ok){ toast('+ '+d.title); pollState(); } else toast(d.error||'失败','err');
   } catch(e){}
   btn.textContent = orig;

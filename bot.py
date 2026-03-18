@@ -287,13 +287,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not songs:
         await msg.edit_text("❌ 没找到，换个关键词试试")
         return
+    # 缓存搜索结果，callback_data 只存 video_id（Telegram 限制 64 字节）
+    context.user_data["search"] = {s["video_id"]: s for s in songs}
     lines = []
     keyboard = []
     for i, s in enumerate(songs, 1):
         lines.append(f"{i}. {s['title']} — {s['artist']} [{s['duration']}]")
         keyboard.append([InlineKeyboardButton(
             f"{i}. {s['title']} — {s['artist']}",
-            callback_data=f"play:{s['video_id']}:{s['artist']}",
+            callback_data=f"play|{s['video_id']}",
         )])
     await msg.edit_text(
         "找到以下结果，点击播放：\n\n" + "\n".join(lines),
@@ -315,13 +317,16 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     # 搜索结果选歌
-    if data.startswith("play:"):
-        parts = data.split(":", 2)
+    if data.startswith("play|"):
+        parts = data.split("|")
         video_id = parts[1]
-        artist   = parts[2] if len(parts) > 2 else ""
+        # 从缓存里取 title/artist，没有就留空让 yt-dlp 填
+        cached_meta = context.user_data.get("search", {}).get(video_id, {})
+        artist = cached_meta.get("artist", "")
+        title  = cached_meta.get("title", "")
         await query.edit_message_text("⬇️ 下载中…")
         try:
-            item = await downloader.download(video_id, artist)
+            item = await downloader.download(video_id, artist, title)
         except Exception as e:
             await query.edit_message_text(f"❌ 下载失败：{e}")
             return

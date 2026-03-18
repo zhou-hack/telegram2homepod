@@ -39,9 +39,14 @@ def search_songs(query: str, limit: int = 5) -> list[dict]:
         video_id = r.get("videoId")
         if not video_id:
             continue
+        # ytmusicapi 返回结构：title=歌名, artists=歌手列表, album=专辑
+        # 取干净歌名，不拼专辑
+        title   = r.get("title", "未知")
+        artists = ", ".join(a["name"] for a in r.get("artists", []))
         songs.append({
-            "title":    r.get("title", "未知"),
-            "artist":   ", ".join(a["name"] for a in r.get("artists", [])),
+            "title":    title,
+            "artist":   artists,
+            "album":    (r.get("album") or {}).get("name", ""),
             "duration": r.get("duration", "?"),
             "video_id": video_id,
         })
@@ -76,17 +81,17 @@ def _do_download(url: str) -> tuple[str, str, str]:
     return file_path, title, video_id
 
 
-async def download(video_id_or_url: str, artist: str = "") -> dict:
+async def download(video_id_or_url: str, artist: str = "", title: str = "") -> dict:
     """
     异步下载，返回 item dict:
       {title, artist, video_id, file_path}
 
+    title/artist 优先用调用方传入的（来自 ytmusicapi 搜索结果，比 yt-dlp 的干净）。
     优先从历史缓存复用，避免重复下载。
     """
     # 解析 URL
     if video_id_or_url.startswith("http"):
         url = video_id_or_url
-        # 从 URL 尝试提取 video_id（用于缓存查询）
         import urllib.parse as up
         qs = up.parse_qs(up.urlparse(url).query)
         video_id_guess = qs.get("v", [None])[0] or video_id_or_url
@@ -98,22 +103,20 @@ async def download(video_id_or_url: str, artist: str = "") -> dict:
     cached = history.file_exists(video_id_guess)
     if cached:
         logger.info(f"缓存命中: {video_id_guess}")
-        # 找到完整 record
         for r in history.get_all():
             if r.get("video_id") == video_id_guess:
                 return r
-        # 万一 record 不完整，直接返回最简结构
-        return {"title": video_id_guess, "artist": artist,
+        return {"title": title or video_id_guess, "artist": artist,
                 "video_id": video_id_guess, "file_path": cached}
 
     # 真正下载（在线程池里跑，不阻塞事件循环）
     loop = asyncio.get_event_loop()
-    file_path, title, video_id = await loop.run_in_executor(
+    file_path, yt_title, video_id = await loop.run_in_executor(
         None, _do_download, url
     )
 
     item = {
-        "title":     title,
+        "title":     title or yt_title,   # 优先用搜索拿到的 title，没有才用 yt-dlp 的
         "artist":    artist,
         "video_id":  video_id,
         "file_path": file_path,
