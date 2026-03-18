@@ -2,6 +2,8 @@
 
 通过 Telegram 控制 HomePod 播放音乐，支持搜索 YouTube、语音点歌、播放控制等功能。
 
+<sub>Hey! It's VibeCoding By Claude</sub>
+
 [//]: # (@todo add English translation)
 [//]: # (@todo add screenshot)
 [//]: # (@todo add deployment guide)
