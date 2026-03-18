@@ -64,7 +64,7 @@ cp env.example .env
 ### 3. Docker 部署（推荐）
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 4. 手动部署
