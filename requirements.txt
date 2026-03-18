@@ -1,0 +1,6 @@
+python-telegram-bot>=20.0
+pyatv
+yt-dlp
+ytmusicapi
+python-dotenv
+aiohttp

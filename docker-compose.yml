@@ -1,0 +1,12 @@
+services:
+  homepod:
+    build: .
+    container_name: homepod-bot
+    restart: unless-stopped
+    network_mode: host        # 必须 host 模式，pyatv 需要和 HomePod 同局域网
+    env_file:
+      - .env
+    volumes:
+      - ./music:/app/music       # mp3 缓存
+      - ./history:/app/history   # 播放历史
+      - ./.env:/app/.env         # WEBUI_TOKEN 自动写回 .env
